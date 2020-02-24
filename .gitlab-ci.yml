@@ -1,0 +1,40 @@
+variables:
+  BRANCH: ${CI_COMMIT_REF_SLUG}
+  IMAGE_TAG: ${CI_COMMIT_REF_SLUG}-${CI_PIPELINE_ID}
+  COMPONENT: antara-p3h
+
+stages:
+  - print-out-vars
+  - build-and-test
+  - push-to-repo
+
+first:
+  stage: print-out-vars
+  script:
+    - echo BRANCH=${BRANCH}
+    - echo IMAGE_TAG=${IMAGE_TAG}
+    - echo COMPONENT=${COMPONENT}
+
+build and test:
+  stage: build-and-test
+  only:
+    - skip
+  script:
+    - docker pull citradigital/toldata
+
+    - make IMAGE_TAG=${IMAGE_TAG} cleantest
+    - make IMAGE_TAG=${IMAGE_TAG} gen
+    - make IMAGE_TAG=${IMAGE_TAG} test
+    - make IMAGE_TAG=${IMAGE_TAG} cleantest
+
+push-to-repo:
+  stage: push-to-repo
+  only:
+    - master
+  script:
+    - docker pull citradigital/toldata
+    - make IMAGE_TAG=${IMAGE_TAG} gen
+    - make IMAGE_TAG=${IMAGE_TAG} api
+    - make IMAGE_TAG=${IMAGE_TAG} grpc
+    - docker push docker.dev.citra.digital/jidat/${COMPONENT}:${IMAGE_TAG}
+    - docker push docker.dev.citra.digital/jidat/${COMPONENT}-grpc:${IMAGE_TAG}

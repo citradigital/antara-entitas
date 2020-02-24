@@ -1,0 +1,59 @@
+version: '3.2'
+services:
+  testnats:
+    image: docker.dev.citra.digital/toldate/bus
+  testdb:
+    image: postgres:alpine
+    environment:
+      POSTGRES_USER: db
+      POSTGRES_DB: testdb
+      POSTGRES_PASSWORD: db
+      PGDATA: /data
+    command: apk add postgresql-contrib
+    command: postgres
+  testredis:
+    image: redis
+  testapi:
+    environment:
+      COMPONENT: ${COMPONENT}
+      http_proxy: ${http_proxy}
+      https_proxy: ${http_proxy}
+    depends_on:
+      - "testdb"
+      - "testnats"
+    image: cdl/mylife/${COMPONENT}:test
+    volumes:
+      - ../../migrations/test:/migrations
+      - /tmp/go:/go/pkg
+    build:
+      context: ../..
+      dockerfile: deployments/docker/testapi/Dockerfile
+  buildapi:
+    environment:
+      COMPONENT: ${COMPONENT}
+      http_proxy: ${http_proxy}
+      https_proxy: ${http_proxy}
+    image: cdl/mylife/${COMPONENT}:build
+    build:
+      context: ../..
+      dockerfile: deployments/docker/buildapi/Dockerfile
+    volumes:
+      - ./build-results:/srv
+      - /tmp/go:/go/pkg
+  api:
+    environment:
+      COMPONENT: ${COMPONENT}
+    image: docker.dev.citra.digital/jidat/${COMPONENT}:${IMAGE_TAG}
+    build:
+      context: ../..
+      dockerfile: deployments/docker/api/Dockerfile
+  grpc:
+    environment:
+      NATS_URL: ${NATS_URL}
+      GRPC_URL: ${GRPC_URL}
+      COMPONENT: ${COMPONENT}
+      IMAGE_TAG: ${IMAGE_TAG}
+    image: docker.dev.citra.digital/jidat/${COMPONENT}-grpc:${IMAGE_TAG}
+    build:
+      context: ../..
+      dockerfile: deployments/docker/grpc/Dockerfile
